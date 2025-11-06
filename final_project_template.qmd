@@ -1,7 +1,7 @@
 ---
-title: "Your Title"
+title: "Data-Driven Prediction of U.S. COVID-19 Cases Using Google Open Data Repository"
 subtitle: "BMIN5030 Final Project"
-author: "FirstName LastName"
+author: "Quan Minh Nguyen"
 format: html
 editor: visual
 number-sections: true
@@ -14,22 +14,109 @@ Use this template to complete your project throughout the course. Your Final Pro
 
 ## Overview {#sec-overview}
 
-Give a brief a description of your project and its goal(s), what data you are using to complete it, and what two faculty/staff in different fields you have spoken to about your project with a brief summary of what you learned from each person. Include a link to your final project GitHub repository.
+This project uses data from the **Google COVID-19 Open Data Repository** to visualize and predict COVID-19 case trends across U.S. regions. By integrating health, epidemiological, economic, geographic, and vaccination features, the goal is to develop and evaluate a simple machine learning model that forecasts COVID-19 cases and deaths. This project aims to uncover which social and health-related factors most strongly influence pandemic trajectories across different counties or countries. I met Dr. Kai Wang and Umair Ahsan (Lab Manager) to discuss this work. From Umair's discussion, I learned that the the Google COVID-19 Repository has lots of missing data, which may need advanced data analysis as he thinks data quality and feature selection are the most important steps to develop a meaningful model. I also spoke with Dr. Wang, who discussed strategies for building interpretable machine learning models, highlighting the trade-off between predictive accuracy and explainability in public health contexts. Their combined insights reinforced the interdisciplinary nature of this project, balancing epidemiological understanding with computational modeling to make predictions that are both accurate and meaningful for health policy.
+
+<https://github.com/quannguyenminh103/BMIN5030_Final_Project>
 
 ## Introduction {#sec-introduction}
 
-Describe the problem addressed, its significance, and some background to motivate the problem. This should extend what is in the @sec-overview.
+The COVID-19 pandemic has affected every aspect of life around the world, from healthcare systems to local economies, especially in the US. Even though the pandemic has been over for years, understanding what factors contribute to rising or falling case numbers is important for improving how we respond to future public health crises. Although there are many open data sources available, it can be hard to use them effectively because they often contain missing or inconsistent information. In this project, I use the Google COVID-19 Open Data Repository to visualize and predict COVID-19 case and death trends across regions. By combining data on health, mobility, economics, and vaccination rates, I aim to build a simple machine learning model that helps explain which factors have the strongest impact on how the pandemic evolved across different areas.
 
-Explain why your problem is interdisciplinary, what fields can contribute to its understanding, and incorporate background related to what you learned from meeting with faculty/staff.
+This project is interdisciplinary because it connects ideas and methods from epidemiology, data science, and computer science. Epidemiology helps provide context for why certain variables—like vaccination rates or healthcare access—might influence case numbers. Data science and machine learning make it possible to handle large datasets and uncover meaningful patterns, while computer science provides the computational tools needed to model and visualize those relationships. When I met with Umair Ahsan, I learned that the Google COVID-19 dataset includes a lot of missing or incomplete data, so careful cleaning and feature selection are essential before modeling. I also spoke with Dr. Kai Wang, who pointed out that machine learning models in public health should remain interpretable so that the results can inform real-world decisions. These conversations helped shape my approach to balance model accuracy with clarity, focusing on both the data quality and how understandable the predictions are for public health use.
 
 ## Methods {#sec-methods}
 
-Describe the data used and general methodological approach used to address the problem described in the @sec-introduction. Subsequently, incorporate full R code necessary to retrieve and clean data, and perform analysis. Be sure to include a description of code so that others (including your future self) can understand what you are doing and why.
+Describe the data used and general methodological approach used to address the problem described in the \@sec-introduction. Subsequently, incorporate full R code necessary to retrieve and clean data, and perform analysis. Be sure to include a description of code so that others (including your future self) can understand what you are doing and why.
+
+-   Loading R Packages
+
+```{r}
+library(tidyverse)
+library(tibble)
+library(data.table)
+```
+
+-   Data Loading & Exploration
+
+We used daily COVID-19 data for all U.S. states and territories from the *Google COVID-19 Open Data Repository* (GoogleCloudPlatform, 2022). Each state-level dataset was retrieved and merged into a unified data frame in R using `data.table::fread()` and `rbindlist()`.
+
+```{r}
+# state_abbrev <- c(
+#   AL="Alabama", AK="Alaska", AZ="Arizona", AR="Arkansas", CA="California",
+#   CO="Colorado", CT="Connecticut", DE="Delaware", DC="District of Columbia",
+#   FL="Florida", GA="Georgia", HI="Hawaii", ID="Idaho", IL="Illinois",
+#   IN="Indiana", IA="Iowa", KS="Kansas", KY="Kentucky", LA="Louisiana",
+#   ME="Maine", MD="Maryland", MA="Massachusetts", MI="Michigan", MN="Minnesota",
+#   MS="Mississippi", MO="Missouri", MT="Montana", NE="Nebraska", NV="Nevada",
+#   NH="New Hampshire", NJ="New Jersey", NM="New Mexico", NY="New York",
+#   NC="North Carolina", ND="North Dakota", OH="Ohio", OK="Oklahoma",
+#   OR="Oregon", PA="Pennsylvania", RI="Rhode Island", SC="South Carolina",
+#   SD="South Dakota", TN="Tennessee", TX="Texas", UT="Utah", VT="Vermont",
+#   VA="Virginia", WA="Washington", WV="West Virginia", WI="Wisconsin", WY="Wyoming",
+#   AS="American Samoa", GU="Guam", MP="Northern Mariana Islands",
+#   PR="Puerto Rico", VI="Virgin Islands"
+# )
+# 
+# dt_list <- list()
+# 
+# for (abbrev in names(state_abbrev)) {
+#   url <- sprintf("https://storage.googleapis.com/covid19-open-data/v3/location/US_%s.csv", abbrev)
+#   message("Downloading: ", abbrev, " -> ", url)
+#   tryCatch({
+#     dt <- fread(url)
+#     dt[, `:=`(state_abbrev = abbrev, state_name = state_abbrev[abbrev])]
+#     dt_list[[abbrev]] <- dt
+#   }, error = function(e) {
+#     warning("Failed to download for ", abbrev, ": ", conditionMessage(e))
+#   })
+# }
+# 
+# covid19_data <- rbindlist(dt_list, use.names = TRUE, fill = TRUE)
+# 
+# if ("date" %in% names(covid19_data)) {
+#   covid19_data[, date := as.IDate(date)]
+# }
+# setcolorder(covid19_data, c("state_abbrev", "state_name", setdiff(names(all_states_dt), c("state_abbrev", "state_name"))))
+# 
+# fwrite(covid19_data, "covid19_open_data_US_all.csv")
+```
+
+Each record represents one date for a given location, containing variables such as new cases, new deaths, hospitalizations, vaccination rates, testing volumes, and mobility indices:
+
+```{r}
+covid19_data <- read_csv('covid19_open_data_US_all.csv')
+#colSums(!is.na(covid19_data)) / nrow(covid19_data) * 100
+covid19_data
+```
+
+### **Handling Missing Data**
+
+The dataset used in this study contains 55,496 observations and 615 features, covering COVID-19 data for 56 U.S. states and territories from January 1, 2020, to September 15, 2022. Each observation corresponds to a specific date and location, and the dataset includes diverse variables such as epidemiological indicators (new and cumulative cases, deaths, testing rates), vaccination coverage, demographic information, public policy indices, mobility and search trends, and healthcare capacity metrics.
+
+Initial data inspection revealed substantial missingness across features: only 464 of the 615 variables (approximately 75%) contained more than 60 % non-null values, suggesting a considerable missing-data problem. To improve data quality and model reliability, I manually reviewed each feature and removed variables with less than 60 % completeness, reasoning that these variables likely contribute little predictive value or would introduce excessive noise if imputed.
+
+For the remaining features, missing values were handled according to the type and temporal behavior of the variable. Short gaps (typically ≤ 7 days) within each state were imputed using linear interpolation, as local trends such as daily testing, case counts, or vaccination rates tend to vary smoothly over short time windows. For categorical or policy-related variables (e.g., school closures, stay-at-home mandates), missing segments were filled forward or backward within each state, based on the assumption that policy changes remain constant for consecutive days until officially modified.
+
+To explore the spatial and temporal distribution of the pandemic, I plan to visualize new and cumulative cases and deaths through choropleth maps and time-series bar plots. These visualizations will help illustrate the spread and intensity of the pandemic across states and over time.
+
+Feature relevance will then be assessed through feature importance analysis, using a combination of methods such as correlation matrices, mutual information scores, and tree-based importance measures derived from gradient boosting models (XGBoost). This process will help identify the most influential predictors associated with COVID-19 transmission and mortality trends.
+
+After feature selection, the cleaned dataset will be divided into training and testing subsets using a chronological split to respect the time-series nature of the data and prevent information leakage. Specifically, data from January 2020 – December 2021 will serve as the training set, capturing the early and peak phases of the pandemic, while January 2022 – September 2022 will be used for testing, representing the post-peak and endemic transition period.
+
+Finally, we will develop and evaluate several predictive models, including linear regression, logistic regression, and XGBoost. These models will be trained to estimate daily or cumulative outcomes such as new cases and deaths. Performance will be assessed using standard metrics (e.g., RMSE for regression, accuracy and AUC for classification), and feature importance outputs from XGBoost will provide additional interpretability regarding which epidemiological or socio-behavioral factors most strongly influence the observed COVID-19 dynamics.
 
 ## Results {#sec-results}
 
-Describe your results and include relevant tables, plots, and code/comments used to obtain them. You may refer to the @sec-methods as needed. End with a brief conclusion of your findings related to the question you set out to address. You can include references if you'd like, but this is not required.
+Describe your results and include relevant tables, plots, and code/comments used to obtain them. You may refer to the \@sec-methods as needed. End with a brief conclusion of your findings related to the question you set out to address. You can include references if you'd like, but this is not required.
+
+-   Feature Selection & Cleaning
+
+-   Regression Modeling for Case Prediction
+
+-   Regression Modeling for Death Prediction
+
+-   Evaluations
 
 ## Conclusion
 
-This the conclusion. The @sec-results can be invoked here.
+This the conclusion. The \@sec-results can be invoked here.
