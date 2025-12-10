@@ -456,7 +456,7 @@ ggplot(national_ts, aes(x = date, y = cumsum(new_vax_tot))) +
 
 #### COVID-19 Cumulative Cases/Deaths in the US over time (GIF)
 
-To better understand the geographic distribution and severity of the COVID-19 pandemic across the United States, we visualize cumulative and peak COVID-19 outcomes using state-level choropleth maps. The code first adds the geographic dataset (usmap) with federal FIPS identifiers, identifies the most recent reporting date, and determines the national peak dates for new cases and new deaths. We then generate four maps: cumulative confirmed cases, cumulative deaths as of the latest date, and peak daily new cases and deaths on their respective peak days. These maps allow us to assess both the overall burden of disease and the most intense periods of transmission, highlighting spatial disparities in how the pandemic unfolded. By examining current cumulative totals alongside historical peaks, we can better interpret trends, compare state-to-state impacts, and understand which regions experienced the most severe health outcomes. It is clearly seen that California, Texas, Florida, and New York were the most impacted regions by COVID-19. The eastern side seems to have more infected cases/deaths compared to western US. In Pennsylvania, on the peak case date (2022-01-10), there are about 29,854 infected persons while the death rate was up to 99 people on 2021-01-12. Until 2025-09-17, there are approximately 3,227,209 patients with infected COVID-19 and 47,300 deaths.
+To better understand the geographic distribution and severity of the COVID-19 pandemic across the United States, we visualize cumulative and peak COVID-19 outcomes using state-level choropleth maps. The code first adds the geographic dataset (usmap) with federal FIPS identifiers, identifies the most recent reporting date, and determines the national peak dates for new cases and new deaths. We then generate four maps: cumulative confirmed cases, cumulative deaths as of the latest date, and peak daily new cases and deaths on their respective peak days. These maps allow us to assess both the overall burden of disease and the most intense periods of transmission, highlighting spatial disparities in how the pandemic unfolded. By examining current cumulative totals alongside historical peaks, we can better interpret trends, compare state-to-state impacts, and understand which regions experienced the most severe health outcomes. It is clearly seen that California, Texas, Florida, and New York were the most impacted regions by COVID-19. The eastern side seems to have more infected cases/deaths compared to western US. In Pennsylvania, on the peak case date (2022-01-10), there are about 29,854 infected persons while the death rate was up to 99 people on 2021-01-12. Until 2022-09-17, there are approximately 3,227,209 patients with infected COVID-19 and 47,300 deaths.
 
 ```{r}
 add_fips <- function(df) {
@@ -719,18 +719,17 @@ knitr::include_graphics("covid_monthly_cumulative_cases.gif")
 knitr::include_graphics("covid_monthly_cumulative_deaths.gif")
 ```
 
-#### Google Search Trends
+#### Google Search Trends & General Features Correlations
 
-Let's look at some of the Google Search Trends variability along with new cases in Pennsylvania. It is clearly seen that, some parts of the trends are cosistent with the infection rate (i.e. search trends for hypoxemia in early 2022). However, most of the time they are noisy and weakly correlated to the infections.
+Let's look at some of the Google Search Trends variability along with new cases in Pennsylvania. It is clearly seen that some general features such as "new_hospitalized_patients", "lag_cases_7", "current_hospitalized_patients", and "minimum_temperature_celsius" show high correlations to the infection rates. Similarly, some search trends are also consistent with the infection rate (i.e. search trends for hypoxemia in early 2022), indicating these are strong indicators for COVID-19 transmissions.
 
 ```{r, fig.width=14, fig.height=10, out.width="100%"}
 state_select <- "Pennsylvania"
 search_terms <- c(
-  "search_trends_ageusia",
-  "search_trends_dysgeusia",
-  "search_trends_hypoxemia",
-  "search_trends_burning_chest_pain",
-  "search_trends_leg_cramps"
+  "new_hospitalized_patients",
+  "lag_cases_7",
+  "current_hospitalized_patients",
+  "minimum_temperature_celsius"
 )
 
 # Filter + normalize selected search trends + cases
@@ -738,17 +737,81 @@ plot_df <- covid19_ml %>%
   filter(state_name == state_select) %>%
   select(date, new_confirmed, all_of(search_terms)) %>%
   mutate(
-    # Normalize everything to 0-1 scale for plotting
-    new_cases_norm = scales::rescale(new_confirmed)
+    new_cases_norm = scales::rescale(new_confirmed),
+    across(all_of(search_terms), scales::rescale)  # normalize each column separately
   ) %>%
-  tidyr::pivot_longer(
+  pivot_longer(
     cols = search_terms,
     names_to = "trend",
-    values_to = "trend_value"
-  ) %>%
-  mutate(
-    trend_norm = scales::rescale(trend_value)
+    values_to = "trend_norm"
   )
+
+
+# Plot
+p <- ggplot(plot_df, aes(x = date)) +
+  # New cases (secondary axis)
+  geom_line(aes(y = new_cases_norm),
+            color = "black", size = 1.2, alpha = 0.8) +
+  
+  # Search trends
+  geom_line(aes(y = trend_norm, color = trend),
+            size = 1, alpha = 0.9) +
+  
+  scale_y_continuous(
+    name = "Search Trends (normalized)",
+    sec.axis = sec_axis(~ ., name = "New Cases (normalized)")
+  ) +
+  
+  scale_color_manual(values = hue_pal()(length(search_terms))) +
+  
+  labs(
+    title = paste("Google Search Trends vs. New COVID-19 Cases in", state_select),
+    subtitle = "All values normalized for comparison",
+    x = "Date",
+    color = "Search Term"
+  ) +
+  theme_minimal(base_size = 14) +
+  theme(
+    legend.position = "bottom",
+    axis.title.y.right = element_text(color = "black"),
+    axis.title.y.left = element_text(color = "black")
+  )
+p <- p +
+  theme(
+    plot.title = element_text(size = 16, face = "bold"),
+    plot.subtitle = element_text(size = 12),
+    plot.margin = ggplot2::margin(20, 20, 40, 20, unit = "pt"),
+    legend.box.margin = ggplot2::margin(10, 0, 0, 0, unit = "pt"),
+    legend.margin = ggplot2::margin(5, 5, 5, 5, unit = "pt")
+  )
+p
+# Save (prevents cropping issues)
+save_path <- "other_features_vs_cases.png"
+ggsave(save_path, p, width = 14, height = 7.5, dpi = 300)
+```
+
+```{r, fig.width=14, fig.height=10, out.width="100%"}
+state_select <- "Pennsylvania"
+search_terms <- c(
+  "search_trends_ageusia",
+  "search_trends_hypoxemia",
+  "search_trends_dysgeusia"
+)
+
+# Filter + normalize selected search trends + cases
+plot_df <- covid19_ml %>%
+  filter(state_name == state_select) %>%
+  select(date, new_confirmed, all_of(search_terms)) %>%
+  mutate(
+    new_cases_norm = scales::rescale(new_confirmed),
+    across(all_of(search_terms), scales::rescale)  # normalize each column separately
+  ) %>%
+  pivot_longer(
+    cols = search_terms,
+    names_to = "trend",
+    values_to = "trend_norm"
+  )
+
 
 # Plot
 p <- ggplot(plot_df, aes(x = date)) +

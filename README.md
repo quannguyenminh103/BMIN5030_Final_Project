@@ -28,6 +28,8 @@ Figures:
   
   search_trends_vs_cases.png: the plot showing some Google Search trends during COVID-19 pandemic along with the daily confirmed cases.
 
+  other_features_vs_cases.png: the plot showing some general features during COVID-19 pandemic along with the daily confirmed cases.
+
 Author: Quan Minh Nguyen
 
 Ph.D. Candidate in Bioengineering, University of Pennsylvania
