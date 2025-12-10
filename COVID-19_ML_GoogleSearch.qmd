@@ -765,7 +765,7 @@ p <- ggplot(plot_df, aes(x = date)) +
   scale_color_manual(values = hue_pal()(length(search_terms))) +
   
   labs(
-    title = paste("Google Search Trends vs. New COVID-19 Cases in", state_select),
+    title = paste("General Features vs. New COVID-19 Cases in", state_select),
     subtitle = "All values normalized for comparison",
     x = "Date",
     color = "Search Term"
